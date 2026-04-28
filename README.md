@@ -1,15 +1,16 @@
 # youtube-digest
 
-A YouTube video summarizer with two interfaces: a simple CLI for quick use, and a FastAPI service ready for production. Fetches a video transcript, chunks it if needed, and returns a structured academic-style summary using OpenAI.
+A YouTube video summarizer with three ways to run it: a CLI, a FastAPI service, and a Docker container. Fetches a video transcript, chunks it if needed, and returns a structured academic-style summary using OpenAI.
 
 ## Features
 
 - CLI tool for one-off summaries from the terminal
 - REST API with auto-generated Swagger docs
+- Containerized with Docker — runs identically anywhere
 - Automatic transcript chunking and stitching for long videos
 - Structured markdown output (title, topic, key insights)
 
-## Setup
+## Setup (local)
 
 ```
 python -m venv .venv
@@ -28,27 +29,36 @@ Then edit `.env` and paste your OpenAI API key.
 python main.py "https://www.youtube.com/watch?v=VIDEO_ID"
 ```
 
-### API mode
-
-Start the server:
+### API mode (local)
 
 ```
 python -m uvicorn api:app --reload
 ```
 
-Then open the interactive docs at **http://127.0.0.1:8000/docs**, or call it directly:
+Then open **http://127.0.0.1:8000/docs** for the interactive Swagger UI.
+
+### Docker mode
 
 ```
-curl -X POST http://127.0.0.1:8000/summarize \
-  -H "Content-Type: application/json" \
-  -d '{"url":"https://www.youtube.com/watch?v=VIDEO_ID"}'
+docker build -t utube-digest:0.1 .
+docker run -d --name youtube-digest -p 8000:8000 --env-file .env youtube-digest:0.1
 ```
+
+The API will be live at **http://127.0.0.1:8000/docs**.
 
 ## Endpoints
 
 - `GET /` — service info
 - `GET /health` — health check
 - `POST /summarize` — body: `{"url": "..."}` → returns `{"url": "...", "summary": "..."}`
+
+## Example
+
+```
+curl -X POST http://127.0.0.1:8000/summarize \
+  -H "Content-Type: application/json" \
+  -d '{"url":"https://www.youtube.com/watch?v=VIDEO_ID"}'
+```
 
 ## How it works
 
@@ -61,12 +71,12 @@ curl -X POST http://127.0.0.1:8000/summarize \
 
 - [x] CLI tool
 - [x] FastAPI service
-- [ ] Dockerize
+- [x] Dockerize
+- [ ] Deploy to Oracle Cloud
 - [ ] Redis caching
 - [ ] Self-hosted model (Ollama / vLLM)
-- [ ] Prometheus + Grafana metrics
+- [ ] Prometheus + Grafics
 - [ ] GitHub Actions CI/CD
-- [ ] Cloud deployment
 
 ## License
 
