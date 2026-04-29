@@ -5,6 +5,7 @@ from dotenv import load_dotenv
 from openai import OpenAI
 
 from youtube import YouTubeVideo
+import cache
 
 load_dotenv(override=True)
 
@@ -29,7 +30,7 @@ Rules:
 - Respond in markdown. Do not wrap the markdown in a code block.
 """
 
-STITCH_PROMPT = """You are combining multiple section-summaries of one video into a single
+STITCH_PROMPT = """You are combining multiple secummaries of one video into a single
 cohesive summary. Eliminate redundancy, keep all important information, maintain the
 academic tone, and follow the same structure (Title, Topic, Summary)."""
 
@@ -45,11 +46,9 @@ def count_tokens(text):
 def chunk_text(text, max_tokens=MAX_CHUNK_TOKENS):
     if count_tokens(text) <= max_tokens:
         return [text]
-
     sentences = re.split(r"(?<=[.!?])\s+", text)
     chunks = []
     current = ""
-
     for sentence in sentences:
         candidate = (current + " " + sentence).strip() if current else sentence
         if count_tokens(candidate) <= max_tokens:
@@ -58,17 +57,15 @@ def chunk_text(text, max_tokens=MAX_CHUNK_TOKENS):
             if current:
                 chunks.append(current)
             current = sentence
-
     if current:
         chunks.append(current)
-
     return chunks
 
 
 def _client():
     api_key = os.getenv("OPENAI_API_KEY")
     if not api_key:
-        raise RuntimeError("OPENAI_API_KEY not found. Copy .env.example to .env and add your key.")
+        raise RuntimeError("OPENAI_API_KEY not found.")
     return OpenAI(api_key=api_key)
 
 
@@ -85,24 +82,29 @@ def _ask(client, system, user):
 
 
 def summarize(url):
+    cached = cache.get(url)
+    if cached:
+        print("Cache hit.")
+        return cached
+
     video = YouTubeVideo(url)
     client = _client()
-
     chunks = chunk_text(video.transcript)
     print(f"Title: {video.title}")
-    print(f"Transcript split into {len(chunks)} chunk(s).\n")
+    print(f"Chunks: {len(chunks)}")
 
     if len(chunks) == 1:
         user_prompt = f"Video Title: {video.title}\n\nTranscript:\n{chunks[0]}"
-        return _ask(client, SYSTEM_PROMPT, user_prompt)
+        summary = _ask(client, SYSTEM_PROMPT, user_prompt)
+    else:
+        chunk_summaries = []
+        for i, chunk in enumerate(chunks, start=1):
+            print(f"Summarizing chunk {i}/{len(chunks)}")
+            user_prompt = f"Video Title: {video.title}\n\nTranscript section:\n{chunk}"
+            chunk_summaries.append(_ask(client, SYSTEM_PROMPT, user_prompt))
+        joined = "\n\n".join([f"Section {i+1}:\n{s}" for i, s in enumerate(chunk_summaries)])
+        stitch_user = f"Video Title: {video.title}\n\nSection summaries:\n{joined}"
+        summary = _ask(client, STITCH_PROMPT, stitch_user)
 
-    chunk_summaries = []
-    for i, chunk in enumerate(chunks, start=1):
-        print(f"Summarizing chunk {i}/{len(chunks)}...")
-        user_prompt = f"Video Title: {video.title}\n\nTranscript section:\n{chunk}"
-        chunk_summaries.append(_ask(client, SYSTEM_PROMPT, user_prompt))
-
-    print("Stitching final summary...\n")
-    joined = "\n\n".join([f"Section {i+1}:\n{s}" for i, s in enumerate(chunk_summaries)])
-    stitch_user = f"Video Title: {video.title}\n\nSection summaries:\n{joined}"
-    return _ask(client, STITCH_PROMPT, stitch_user)
+    cache.set(url, summary)
+    return summary
