@@ -72,7 +72,7 @@ curl -X POST http://127.0.0.1:8000/summarize \
 - [x] CLI tool
 - [x] FastAPI service
 - [x] Dockerize
-- [ ] Deploy to Oracle Cloud
+- [x] Deploy to cloud (Hetzner)
 - [ ] Redis caching
 - [ ] Self-hosted model (Ollama / vLLM)
 - [ ] Prometheus + Grafics
