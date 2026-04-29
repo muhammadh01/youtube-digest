@@ -73,7 +73,7 @@ curl -X POST http://127.0.0.1:8000/summarize \
 - [x] FastAPI service
 - [x] Dockerize
 - [x] Deploy to cloud (Hetzner)
-- [ ] Redis caching
+- [x] Redis caching (with docker-compose)
 - [ ] Self-hosted model (Ollama / vLLM)
 - [ ] Prometheus + Grafics
 - [ ] GitHub Actions CI/CD
