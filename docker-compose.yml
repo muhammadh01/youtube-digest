@@ -42,6 +42,17 @@ services:
     volumes:
       - redis-data:/data
     command: redis-server --save 60 1 --loglevel warning
+  
+  web:
+    build: ./web
+    container_name: youtube-digest-web
+    restart: unless-stopped
+    expose:
+      - "8501"
+    environment:
+      - API_URL=http://api:8000
+    depends_on:
+      - api
 
 volumes:
   redis-data:
