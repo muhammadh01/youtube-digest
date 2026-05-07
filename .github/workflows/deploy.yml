@@ -1,0 +1,46 @@
+name: Deploy to Hetzner
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+jobs:
+  build-test:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Build API image (smoke test)
+        uses: docker/build-push-action@v5
+        with:
+          context: .
+          push: false
+          tags: youtube-digest:ci
+
+      - name: Build web image (smoke test)
+        uses: docker/build-push-action@v5
+        with:
+          context: ./web
+          push: false
+          tags: youtube-digest-web:ci
+
+  deploy:
+    needs: build-test
+    runs-on: ubuntu-latest
+    steps:
+      - name: Deploy on server
+        uses: appleboy/ssh-action@v1.0.3
+        with:
+          host: ${{ secrets.SSH_HOST }}
+          username: ${{ secrets.SSH_USER }}
+          key: ${{ secrets.SSH_KEY }}
+          script: |
+            cd /opt/youtube-digest
+            git pull
+            docker compose up -d --build
+            docker image prune -f
