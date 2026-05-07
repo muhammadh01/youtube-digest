@@ -3,11 +3,12 @@ from pydantic import BaseModel
 
 from summarizer import summarize
 import cache
+import llm
 
 app = FastAPI(
     title="youtube-digest",
-    description="Summarize YouTube videos using OpenAI.",
-    version="0.2.0",
+    description="Summarize YouTube videos using OpenAI or a self-hosted LLM.",
+    version="0.5.0",
 )
 
 
@@ -27,12 +28,17 @@ def root():
         "service": "youtube-digest",
         "status": "ok",
         "cache_enabled": cache.is_enabled(),
+        "llm": llm.provider_info(),
     }
 
 
 @app.get("/health")
 def health():
-    return {"status": "healthy", "cache_enabled": cache.is_enabled()}
+    return {
+        "status": "healthy",
+        "cache_enabled": cache.is_enabled(),
+        "llm": llm.provider_info(),
+    }
 
 
 @app.post("/summarize", response_model=SummarizeResponse)

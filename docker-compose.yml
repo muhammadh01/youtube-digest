@@ -32,8 +32,12 @@ services:
       - .env
     environment:
       - REDIS_URL=redis://redis:6379/0
+      - LLM_PROVIDER=${LLM_PROVIDER:-openai}
+      - OLLAMA_URL=http://ollama:11434
+      - OLLAMA_MODEL=llama3.2:3b
     depends_on:
       - redis
+      - ollama
 
   redis:
     image: redis:7-alpine
@@ -54,5 +58,15 @@ services:
     depends_on:
       - api
 
+  ollama:
+    image: ollama/ollama:latest
+    container_name: youtube-digest-ollama
+    restart: unless-stopped
+    expose:
+      - "11434"
+    volumes:
+      - ollama-data:/root/.ollama
+
 volumes:
   redis-data:
+  ollama-data:

@@ -2,14 +2,13 @@ import os
 import re
 import tiktoken
 from dotenv import load_dotenv
-from openai import OpenAI
 
 from youtube import YouTubeVideo
 import cache
+import llm
 
 load_dotenv(override=True)
 
-MODEL = "gpt-4.1-mini"
 MAX_CHUNK_TOKENS = 4000
 
 SYSTEM_PROMPT = """
@@ -30,14 +29,14 @@ Rules:
 - Respond in markdown. Do not wrap the markdown in a code block.
 """
 
-STITCH_PROMPT = """You are combining multiple secummaries of one video into a single
+STITCH_PROMPT = """You are combining multiple section-summaries of one video into a single
 cohesive summary. Eliminate redundancy, keep all important information, maintain the
 academic tone, and follow the same structure (Title, Topic, Summary)."""
 
 
 def count_tokens(text):
     try:
-        encoding = tiktoken.encoding_for_model(MODEL)
+        encoding = tiktoken.encoding_for_model("gpt-4.1-mini")
     except KeyError:
         encoding = tiktoken.get_encoding("cl100k_base")
     return len(encoding.encode(text))
@@ -62,25 +61,6 @@ def chunk_text(text, max_tokens=MAX_CHUNK_TOKENS):
     return chunks
 
 
-def _client():
-    api_key = os.getenv("OPENAI_API_KEY")
-    if not api_key:
-        raise RuntimeError("OPENAI_API_KEY not found.")
-    return OpenAI(api_key=api_key)
-
-
-def _ask(client, system, user):
-    response = client.chat.completions.create(
-        model=MODEL,
-        messages=[
-            {"role": "system", "content": system.strip()},
-            {"role": "user", "content": user},
-        ],
-        temperature=0.3,
-    )
-    return response.choices[0].message.content
-
-
 def summarize(url):
     cached = cache.get(url)
     if cached:
@@ -88,23 +68,23 @@ def summarize(url):
         return cached
 
     video = YouTubeVideo(url)
-    client = _client()
     chunks = chunk_text(video.transcript)
     print(f"Title: {video.title}")
     print(f"Chunks: {len(chunks)}")
+    print(f"Provider: {llm.provider_info()}")
 
     if len(chunks) == 1:
         user_prompt = f"Video Title: {video.title}\n\nTranscript:\n{chunks[0]}"
-        summary = _ask(client, SYSTEM_PROMPT, user_prompt)
+        summary = llm.chat(SYSTEM_PROMPT, user_prompt)
     else:
         chunk_summaries = []
         for i, chunk in enumerate(chunks, start=1):
             print(f"Summarizing chunk {i}/{len(chunks)}")
             user_prompt = f"Video Title: {video.title}\n\nTranscript section:\n{chunk}"
-            chunk_summaries.append(_ask(client, SYSTEM_PROMPT, user_prompt))
+            chunk_summaries.append(llm.chat(SYSTEM_PROMPT, user_prompt))
         joined = "\n\n".join([f"Section {i+1}:\n{s}" for i, s in enumerate(chunk_summaries)])
         stitch_user = f"Video Title: {video.title}\n\nSection summaries:\n{joined}"
-        summary = _ask(client, STITCH_PROMPT, stitch_user)
+        summary = llm.chat(STITCH_PROMPT, stitch_user)
 
     cache.set(url, summary)
     return summary
