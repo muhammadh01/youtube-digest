@@ -61,7 +61,8 @@ jobs:
           body: |
             ## Docker Images
 
-```
-            docker pull ghcr.io/${{ github.repository }}-api:${{ steps.version.outputs.version }}
-            docker pull ghcr.io/${{ github.repository }}-web:${{ steps.version.outputs.version }}
-```
+            Pull the API:
+              docker pull ghcr.io/${{ github.repository }}-api:${{ steps.version.outputs.version }}
+
+            Pull the Web:
+              docker pull ghcr.io/${{ github.repository }}-web:${{ steps.version.outputs.version }}
