@@ -1,5 +1,6 @@
 from fastapi import FastAPI, HTTPException
 from pydantic import BaseModel
+from prometheus_fastapi_instrumentator import Instrumentator
 
 from summarizer import summarize
 import cache
@@ -8,8 +9,10 @@ import llm
 app = FastAPI(
     title="youtube-digest",
     description="Summarize YouTube videos using OpenAI or a self-hosted LLM.",
-    version="0.5.0",
+    version="0.6.0",
 )
+
+Instrumentator().instrument(app).expose(app)
 
 
 class SummarizeRequest(BaseModel):
